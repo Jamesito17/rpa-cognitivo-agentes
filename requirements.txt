@@ -2,3 +2,5 @@ streamlit
 pytesseract
 pillow
 pdf2image
+pandas
+xlsxwriter
