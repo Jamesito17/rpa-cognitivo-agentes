@@ -88,6 +88,35 @@ class AgenteAuditorMatematico:
             datos["Metodología"] = "Fallo de Agentes"
 
         return datos
+class AgenteAnalistaCumplimiento:
+    """Agente 3: Especialista en normativas tributarias y prevención de riesgos fiscales"""
+    def __init__(self):
+        self.nombre = "Agente de Cumplimiento Tributario"
+
+    def evaluar_riesgo(self, datos):
+        observaciones = []
+        
+        # Regla 1: Ley de Bancarización en Perú (Montos mayores a S/ 2000)
+        try:
+            total_float = float(datos.get("Total", "0").replace(',', '.'))
+            if total_float >= 2000:
+                observaciones.append("⚠️ Requiere Bancarización")
+        except:
+            pass
+
+        # Regla 2: Antigüedad del documento
+        fecha = datos.get("Fecha", "")
+        if fecha != "No detectado" and "2026" not in fecha:
+            # Si tiene un año distinto al actual 
+            observaciones.append("📅 Revisar periodo fiscal")
+
+        # Asignar la alerta final al diccionario
+        if observaciones:
+            datos["Alerta Tributaria"] = " | ".join(observaciones)
+        else:
+            datos["Alerta Tributaria"] = "✅ Conforme (Sin riesgo)"
+
+        return datos        
 
 # ==========================================
 # FUNCIONES AUXILIARES PARA EXPORTACIÓN
@@ -112,8 +141,9 @@ def main():
 
     agente_vision = AgenteVisionOCR()
     agente_auditor = AgenteAuditorMatematico()
+    agente_cumplimiento = AgenteAnalistaCumplimiento()
 
-    # HABILITAMOS CARGA MASIVA DE ARCHIVOS (accept_multiple_files=True)
+    #CARGA MASIVA DE ARCHIVOS (accept_multiple_files=True)
     archivos_subidos = st.file_uploader("Sube tus facturas (JPG, JPEG, PNG)", type=['jpg', 'jpeg', 'png'], accept_multiple_files=True)
 
     if archivos_subidos:
