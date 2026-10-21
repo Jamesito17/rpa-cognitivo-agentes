@@ -141,9 +141,9 @@ def main():
 
     agente_vision = AgenteVisionOCR()
     agente_auditor = AgenteAuditorMatematico()
-    agente_cumplimiento = AgenteAnalistaCumplimiento()
+    # 1. INSTANCIAMOS AL NUEVO AGENTE AQUÍ
+    agente_cumplimiento = AgenteAnalistaCumplimiento() 
 
-    #CARGA MASIVA DE ARCHIVOS (accept_multiple_files=True)
     archivos_subidos = st.file_uploader("Sube tus facturas (JPG, JPEG, PNG)", type=['jpg', 'jpeg', 'png'], accept_multiple_files=True)
 
     if archivos_subidos:
@@ -151,48 +151,42 @@ def main():
         
         if st.button("▶️ Ejecutar Procesamiento por Lotes", type="primary"):
             
-            # Lista para consolidar los resultados de todas las facturas
             resultados_lote = []
-            
-            # Barra de progreso
             barra_progreso = st.progress(0)
             
+            # --- ZONA 1: BUCLE DE PROCESAMIENTO ---
             for i, archivo in enumerate(archivos_subidos):
                 imagen = Image.open(archivo)
                 nombre_archivo = archivo.name
                 
                 with st.spinner(f"Procesando {nombre_archivo}..."):
-                    # Flujo Multiagente por cada archivo
                     texto_bruto = agente_vision.extraer_texto(imagen)
                     datos_estructurados = agente_auditor.procesar_datos(texto_bruto)
                     
-                    # Añadimos el nombre del archivo al diccionario
-                    datos_estructurados["Archivo Origen"] = nombre_archivo
-                    resultados_lote.append(datos_estructurados)
+                    # 2. INYECTAMOS AL AGENTE 3 DENTRO DEL BUCLE
+                    datos_finales = agente_cumplimiento.evaluar_riesgo(datos_estructurados)
+                    
+                    datos_finales["Archivo Origen"] = nombre_archivo
+                    resultados_lote.append(datos_finales)
                 
-                # Actualizar barra de progreso
                 barra_progreso.progress((i + 1) / len(archivos_subidos))
             
             st.success("✅ Flujo Multiagente por lotes completado.")
-            
             st.markdown("### 📊 Consolidado de Extracción")
             
-            # Crear un Dataframe de Pandas con los resultados
             df_resultados = pd.DataFrame(resultados_lote)
             
-            # Reordenar las columnas para una mejor presentación
-            columnas_orden = ["Archivo Origen", "RUC", "Fecha", "Subtotal", "IGV", "Total", "Metodología", "Estado"]
+            # --- ZONA 2: REORDEN DE COLUMNAS (LA DE TU CAPTURA) ---
+            # 3. AGREGAMOS "Alerta Tributaria" A LA LISTA
+            columnas_orden = ["Archivo Origen", "RUC", "Fecha", "Subtotal", "IGV", "Total", "Metodología", "Alerta Tributaria", "Estado"]
             df_resultados = df_resultados[columnas_orden]
             
-            # Mostrar tabla interactiva en Streamlit
             st.dataframe(df_resultados, use_container_width=True)
             
-            # Contar alertas HITL
             alertas = df_resultados[df_resultados['Estado'] == '🚨 Alerta HITL'].shape[0]
             if alertas > 0:
                 st.error(f"⚠️ Se detectaron {alertas} documento(s) con alertas HITL. Por favor, revise los documentos marcados en rojo en la tabla de exportación.")
             
-            # Botón de Descarga Excel
             st.markdown("---")
             st.markdown("### 💾 Exportar Resultados")
             excel_data = convertir_df_a_excel(df_resultados)
@@ -204,13 +198,12 @@ def main():
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
             
-            # Mostrar imágenes originales para revisión (Opcional, útil para HITL)
             with st.expander("🔍 Ver Documentos Originales Procesados"):
                 cols = st.columns(3)
                 for i, archivo in enumerate(archivos_subidos):
                     with cols[i % 3]:
                         img = Image.open(archivo)
-                        st.image(img, caption=archivo.name, use_container_width=True) # Corregida la advertencia
+                        st.image(img, caption=archivo.name, use_container_width=True)
 
 if __name__ == "__main__":
     main()
