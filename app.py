@@ -23,7 +23,20 @@ class AgenteVisionOCR:
 
     def extraer_texto(self, imagen):
         try:
-            return pytesseract.image_to_string(imagen)
+            # --- NUEVO: PRE-PROCESAMIENTO DE IMAGEN PARA TESSERACT ---
+            # 1. Convertir a escala de grises (L)
+            imagen_gris = imagen.convert('L')
+            
+            # 2. Aumentar un poco el contraste (opcional, pero ayuda mucho)
+            from PIL import ImageEnhance
+            mejorador = ImageEnhance.Contrast(imagen_gris)
+            imagen_mejorada = mejorador.enhance(2.0) # Duplica el contraste
+            
+            # 3. Extraer texto usando un modo de segmentación de página (PSM) más agresivo
+            # PSM 6 asume un bloque uniforme de texto, ideal para facturas.
+            configuracion = r'--oem 3 --psm 6'
+            
+            return pytesseract.image_to_string(imagen_mejorada, config=configuracion)
         except Exception as e:
             return f"Error OCR: {e}"
 
