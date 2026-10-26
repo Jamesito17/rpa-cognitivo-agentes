@@ -5,6 +5,7 @@ import re
 import os
 import pandas as pd
 from io import BytesIO
+
 # ==========================================
 # CONFIGURACIÓN DINÁMICA DE TESSERACT
 # ==========================================
@@ -26,9 +27,10 @@ class AgenteVisionOCR:
         except Exception as e:
             return f"Error OCR: {e}"
 
+
 class AgenteAuditorMatematico:
     """Agente 2: Especialista en reglas de negocio, RegEx y triangulación de impuestos"""
-def __init__(self):
+    def __init__(self):
         self.nombre = "Agente Lógico-Matemático"
         
         self.patrones_ruc = [r'RUC[^\d]*(\d{11})']
@@ -42,21 +44,17 @@ def __init__(self):
         self.patrones_subtotal = [
             r'OP\.\s*GRAVADAS?.{0,40}?(\d+[\.,]\d{2})',
             r'VALOR VENTA.{0,40}?(\d+[\.,]\d{2})',
-            # Forzamos que atrape el último Subtotal que encuentre en el texto
             r'SUB[\.\s-]?TOTAL(?:(?!SUB[\.\s-]?TOTAL).)*?(\d+[\.,]\d{2})'
         ]
         
         self.patrones_igv = [
-            # Damos aún más holgura para Tesseract (hasta 60 espacios) y puntos
             r'I[\.\s]?G[\.\s]?V[\.\s]?(?:18%)?.{0,60}?(\d+[\.,]\d{2})'
         ]
         
         self.patrones_total = [
             r'IMPORTE TOT.{0,40}?(\d+[\.,]\d{2})',
             r'TOTAL A PAGAR.{0,40}?(\d+[\.,]\d{2})',
-            # Técnica extrema: Solo atrapar el TOTAL que tenga "S/" o "S/." antes
             r'TOTAL[^\d]{0,40}?[S\$][/\.]?\s*(\d+[\.,]\d{2})',
-            # Si falla, buscar el último Total absoluto del ticket
             r'TOTAL(?:(?!TOTAL).)*?(\d+[\.,]\d{2})'
         ]
 
@@ -87,6 +85,7 @@ def __init__(self):
         subtotal_num = a_numero(datos["Subtotal"])
         igv_num = a_numero(datos["IGV"])
 
+        # Regla de negocio peruana: IGV es 18% del Subtotal
         if total_num > 0 and (igv_num == 0 or igv_num >= total_num or subtotal_num == 0):
             subtotal_calc = round(total_num / 1.18, 2)
             igv_calc = round(total_num - subtotal_calc, 2)
@@ -103,6 +102,8 @@ def __init__(self):
             datos["Metodología"] = "Fallo de Agentes"
 
         return datos
+
+
 class AgenteAnalistaCumplimiento:
     """Agente 3: Especialista en normativas tributarias y prevención de riesgos fiscales"""
     def __init__(self):
@@ -111,7 +112,6 @@ class AgenteAnalistaCumplimiento:
     def evaluar_riesgo(self, datos):
         observaciones = []
         
-        # Regla 1: Ley de Bancarización en Perú (Montos mayores a S/ 2000)
         try:
             total_float = float(datos.get("Total", "0").replace(',', '.'))
             if total_float >= 2000:
@@ -119,19 +119,17 @@ class AgenteAnalistaCumplimiento:
         except:
             pass
 
-        # Regla 2: Antigüedad del documento
         fecha = datos.get("Fecha", "")
         if fecha != "No detectado" and "2026" not in fecha:
-            # Si tiene un año distinto al actual 
             observaciones.append("📅 Revisar periodo fiscal")
 
-        # Asignar la alerta final al diccionario
         if observaciones:
             datos["Alerta Tributaria"] = " | ".join(observaciones)
         else:
             datos["Alerta Tributaria"] = "✅ Conforme (Sin riesgo)"
 
-        return datos        
+        return datos
+
 
 # ==========================================
 # FUNCIONES AUXILIARES PARA EXPORTACIÓN
@@ -143,10 +141,10 @@ def convertir_df_a_excel(df):
     procesado_data = output.getvalue()
     return procesado_data
 
+
 # ==========================================
 # INTERFAZ WEB (FRONTEND STREAMLIT)
 # ==========================================
-
 def main():
     st.set_page_config(page_title="RPA Multiagente UNFV", page_icon="🤖", layout="wide")
     
@@ -156,7 +154,6 @@ def main():
 
     agente_vision = AgenteVisionOCR()
     agente_auditor = AgenteAuditorMatematico()
-    # 1. INSTANCIAMOS AL NUEVO AGENTE AQUÍ
     agente_cumplimiento = AgenteAnalistaCumplimiento() 
 
     archivos_subidos = st.file_uploader("Sube tus facturas (JPG, JPEG, PNG)", type=['jpg', 'jpeg', 'png'], accept_multiple_files=True)
@@ -169,7 +166,6 @@ def main():
             resultados_lote = []
             barra_progreso = st.progress(0)
             
-            # --- ZONA 1: BUCLE DE PROCESAMIENTO ---
             for i, archivo in enumerate(archivos_subidos):
                 imagen = Image.open(archivo)
                 nombre_archivo = archivo.name
@@ -177,10 +173,7 @@ def main():
                 with st.spinner(f"Procesando {nombre_archivo}..."):
                     texto_bruto = agente_vision.extraer_texto(imagen)
                     datos_estructurados = agente_auditor.procesar_datos(texto_bruto)
-                    
-                    # 2. INYECTAMOS AL AGENTE 3 DENTRO DEL BUCLE
                     datos_finales = agente_cumplimiento.evaluar_riesgo(datos_estructurados)
-                    
                     datos_finales["Archivo Origen"] = nombre_archivo
                     resultados_lote.append(datos_finales)
                 
@@ -191,8 +184,6 @@ def main():
             
             df_resultados = pd.DataFrame(resultados_lote)
             
-            # --- ZONA 2: REORDEN DE COLUMNAS (LA DE TU CAPTURA) ---
-            # 3. AGREGAMOS "Alerta Tributaria" A LA LISTA
             columnas_orden = ["Archivo Origen", "RUC", "Fecha", "Subtotal", "IGV", "Total", "Metodología", "Alerta Tributaria", "Estado"]
             df_resultados = df_resultados[columnas_orden]
             
@@ -220,8 +211,7 @@ def main():
                         img = Image.open(archivo)
                         st.image(img, caption=archivo.name, use_container_width=True)
 
-if __name__ == "__main__":
-    main()
-
 
 # V0.1
+if __name__ == "__main__":
+    main()
