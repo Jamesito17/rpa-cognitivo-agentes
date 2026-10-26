@@ -29,35 +29,37 @@ class AgenteVisionOCR:
 
 class AgenteAuditorMatematico:
     """Agente 2: Especialista en reglas de negocio, RegEx y triangulación de impuestos"""
-    def __init__(self):
-            self.nombre = "Agente Lógico-Matemático"
-            
-            self.patrones_ruc = [r'RUC[^\d]*(\d{11})']
-            
-            self.patrones_fecha = [
-                r'EMISI(?:O|Ó|0)N.{0,20}?(\d{4}[/-]\d{2}[/-]\d{2}|\d{2}[/-]\d{2}[/-]\d{4})',
-                r'FECHA.{0,30}?(\d{4}[/-]\d{2}[/-]\d{2}|\d{2}[/-]\d{2}[/-]\d{4})',
-                r'(\d{4}[/-]\d{2}[/-]\d{2}|\d{2}[/-]\d{2}[/-]\d{4})'
-            ]
-            
-            self.patrones_subtotal = [
-                r'OP\.\s*GRAVADAS?.{0,40}?(\d+[\.,]\d{2})',
-                r'VALOR VENTA.{0,40}?(\d+[\.,]\d{2})',
-                r'SUB[\.\s-]?TOTAL.{0,40}?(\d+[\.,]\d{2})'
-            ]
-            
-            self.patrones_igv = [
-                r'I\.?G\.?V\.?(?:\s*18%)?.{0,40}?(\d+[\.,]\d{2})'
-            ]
-            
-            self.patrones_total = [
-                # 1. Busca "Importe Total" y tolera fallos de lectura (ej. IMPORTE TOT)
-                r'IMPORTE TOT.{0,40}?(\d+[\.,]\d{2})',
-                # 2. Busca "Total a Pagar"
-                r'TOTAL A PAGAR.{0,40}?(\d+[\.,]\d{2})',
-                # 3. Solo busca "TOTAL", pero rechaza atrapar la palabra "SUB TOTAL"
-                r'(?<!SUB )(?<!SUB)TOTAL.{0,40}?(\d+[\.,]\d{2})'
-            ]
+def __init__(self):
+        self.nombre = "Agente Lógico-Matemático"
+        
+        self.patrones_ruc = [r'RUC[^\d]*(\d{11})']
+        
+        self.patrones_fecha = [
+            r'EMISI(?:O|Ó|0)N.{0,20}?(\d{4}[/-]\d{2}[/-]\d{2}|\d{2}[/-]\d{2}[/-]\d{4})',
+            r'FECHA.{0,30}?(\d{4}[/-]\d{2}[/-]\d{2}|\d{2}[/-]\d{2}[/-]\d{4})',
+            r'(\d{4}[/-]\d{2}[/-]\d{2}|\d{2}[/-]\d{2}[/-]\d{4})'
+        ]
+        
+        self.patrones_subtotal = [
+            r'OP\.\s*GRAVADAS?.{0,40}?(\d+[\.,]\d{2})',
+            r'VALOR VENTA.{0,40}?(\d+[\.,]\d{2})',
+            # Forzamos que atrape el último Subtotal que encuentre en el texto
+            r'SUB[\.\s-]?TOTAL(?:(?!SUB[\.\s-]?TOTAL).)*?(\d+[\.,]\d{2})'
+        ]
+        
+        self.patrones_igv = [
+            # Damos aún más holgura para Tesseract (hasta 60 espacios) y puntos
+            r'I[\.\s]?G[\.\s]?V[\.\s]?(?:18%)?.{0,60}?(\d+[\.,]\d{2})'
+        ]
+        
+        self.patrones_total = [
+            r'IMPORTE TOT.{0,40}?(\d+[\.,]\d{2})',
+            r'TOTAL A PAGAR.{0,40}?(\d+[\.,]\d{2})',
+            # Técnica extrema: Solo atrapar el TOTAL que tenga "S/" o "S/." antes
+            r'TOTAL[^\d]{0,40}?[S\$][/\.]?\s*(\d+[\.,]\d{2})',
+            # Si falla, buscar el último Total absoluto del ticket
+            r'TOTAL(?:(?!TOTAL).)*?(\d+[\.,]\d{2})'
+        ]
 
     def _buscar_regex(self, texto, patrones):
         for patron in patrones:
