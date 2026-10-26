@@ -60,6 +60,7 @@ class AgenteVisionOCR:
 class AgenteAuditorMatematico:
     def __init__(self):
         self.nombre = "Agente Lógico-Matemático"
+        self.et_propina = [r'PROPINA']
 
         self.patrones_fecha = [
             r'EMISI[OÓ0]N[^\d]{0,25}(\d{2}[/-]\d{2}[/-]\d{4}|\d{4}[/-]\d{2}[/-]\d{2})',
@@ -128,14 +129,20 @@ class AgenteAuditorMatematico:
         tot_l = self._por_etiqueta(lineas, self.et_total)
         terna = self._buscar_terna(texto)
 
-        if terna:
-            total, sub, igv = terna
-            datos["Metodología"] = "✅ Validación cruzada (IGV 18%)"
-            datos["Estado"] = "Aprobado"
-            puntaje = 10
-        elif sub_l and igv_l and tot_l and abs(sub_l + igv_l - tot_l) <= 0.02:
+        propina = self._por_etiqueta(lineas, self.et_propina)
+
+        directo = (sub_l and igv_l and tot_l
+                   and abs(sub_l * 0.18 - igv_l) <= 0.03
+                   and abs(sub_l + igv_l + propina - tot_l) <= 0.02)
+
+        if directo:
             total, sub, igv = tot_l, sub_l, igv_l
             datos["Metodología"] = "🤖 Extracción OCR Directa"
+            datos["Estado"] = "Aprobado"
+            puntaje = 10
+        elif terna:
+            total, sub, igv = terna
+            datos["Metodología"] = "✅ Validación cruzada (IGV 18%)"
             datos["Estado"] = "Aprobado"
             puntaje = 8
         elif tot_l and not igv_l:
