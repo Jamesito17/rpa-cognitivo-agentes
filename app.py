@@ -30,23 +30,34 @@ class AgenteVisionOCR:
 class AgenteAuditorMatematico:
     """Agente 2: Especialista en reglas de negocio, RegEx y triangulación de impuestos"""
     def __init__(self):
-        self.nombre = "Agente Lógico-Matemático"
-        self.patrones_ruc = [r'RUC[^\d]*(\d{11})']
-        self.patrones_fecha = [
-            r'EMISI(?:O|Ó|0)N.{0,20}?(\d{4}[/-]\d{2}[/-]\d{2}|\d{2}[/-]\d{2}[/-]\d{4})',
-            r'FECHA.{0,30}?(\d{4}[/-]\d{2}[/-]\d{2}|\d{2}[/-]\d{2}[/-]\d{4})',
-            r'(\d{4}[/-]\d{2}[/-]\d{2}|\d{2}[/-]\d{2}[/-]\d{4})'
-        ]
-        self.patrones_subtotal = [r'OP\.\s*GRAVADAS.{0,20}?(\d+[\.,]\d{2})', r'SUB[\.\s]?TOTAL.{0,20}?(\d+[\.,]\d{2})']
-        self.patrones_igv = [
-            r'I\.?G\.?V\.?.{0,40}?(\d+[\.,]\d{2})',  # Cubre IGV, I.G.V, I.G.V. y permite hasta 40 espacios
-            r'I\.?G\.?V\s*18%.{0,40}?(\d+[\.,]\d{2})' # Cubre específicamente cuando dice "I.G.V 18%"
-        ]
-        self.patrones_total = [
-            r'TOTAL A PAGAR.{0,20}?(\d+[\.,]\d{2})',
-            r'IMPORTE TOTAL.{0,50}?(?:[S5s\$]\s*[/\|]\s*)?(\d+[\.,]\d{2})',
-            r'TOTAL.{0,20}?(\d+[\.,]\d{2})'
-        ]
+            self.nombre = "Agente Lógico-Matemático"
+            
+            self.patrones_ruc = [r'RUC[^\d]*(\d{11})']
+            
+            self.patrones_fecha = [
+                r'EMISI(?:O|Ó|0)N.{0,20}?(\d{4}[/-]\d{2}[/-]\d{2}|\d{2}[/-]\d{2}[/-]\d{4})',
+                r'FECHA.{0,30}?(\d{4}[/-]\d{2}[/-]\d{2}|\d{2}[/-]\d{2}[/-]\d{4})',
+                r'(\d{4}[/-]\d{2}[/-]\d{2}|\d{2}[/-]\d{2}[/-]\d{4})'
+            ]
+            
+            self.patrones_subtotal = [
+                r'OP\.\s*GRAVADAS?.{0,40}?(\d+[\.,]\d{2})',
+                r'VALOR VENTA.{0,40}?(\d+[\.,]\d{2})',
+                r'SUB[\.\s-]?TOTAL.{0,40}?(\d+[\.,]\d{2})'
+            ]
+            
+            self.patrones_igv = [
+                r'I\.?G\.?V\.?(?:\s*18%)?.{0,40}?(\d+[\.,]\d{2})'
+            ]
+            
+            self.patrones_total = [
+                # 1. Busca "Importe Total" y tolera fallos de lectura (ej. IMPORTE TOT)
+                r'IMPORTE TOT.{0,40}?(\d+[\.,]\d{2})',
+                # 2. Busca "Total a Pagar"
+                r'TOTAL A PAGAR.{0,40}?(\d+[\.,]\d{2})',
+                # 3. Solo busca "TOTAL", pero rechaza atrapar la palabra "SUB TOTAL"
+                r'(?<!SUB )(?<!SUB)TOTAL.{0,40}?(\d+[\.,]\d{2})'
+            ]
 
     def _buscar_regex(self, texto, patrones):
         for patron in patrones:
