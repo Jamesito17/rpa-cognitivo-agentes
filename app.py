@@ -38,7 +38,10 @@ class AgenteAuditorMatematico:
             r'(\d{4}[/-]\d{2}[/-]\d{2}|\d{2}[/-]\d{2}[/-]\d{4})'
         ]
         self.patrones_subtotal = [r'OP\.\s*GRAVADAS.{0,20}?(\d+[\.,]\d{2})', r'SUB[\.\s]?TOTAL.{0,20}?(\d+[\.,]\d{2})']
-        self.patrones_igv = [r'IGV.{0,20}?(\d+[\.,]\d{2})']
+        self.patrones_igv = [
+            r'I\.?G\.?V\.?.{0,40}?(\d+[\.,]\d{2})',  # Cubre IGV, I.G.V, I.G.V. y permite hasta 40 espacios
+            r'I\.?G\.?V\s*18%.{0,40}?(\d+[\.,]\d{2})' # Cubre específicamente cuando dice "I.G.V 18%"
+        ]
         self.patrones_total = [
             r'TOTAL A PAGAR.{0,20}?(\d+[\.,]\d{2})',
             r'IMPORTE TOTAL.{0,50}?(?:[S5s\$]\s*[/\|]\s*)?(\d+[\.,]\d{2})',
