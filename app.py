@@ -5,7 +5,6 @@ import re
 import os
 import pandas as pd
 from io import BytesIO
-
 # ==========================================
 # CONFIGURACIÓN DINÁMICA DE TESSERACT
 # ==========================================
