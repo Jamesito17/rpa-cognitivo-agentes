@@ -4,3 +4,4 @@ pillow
 pdf2image
 pandas
 xlsxwriter
+pymupdf
