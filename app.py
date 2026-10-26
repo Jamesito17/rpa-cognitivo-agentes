@@ -6,6 +6,20 @@ import os
 import datetime
 import pandas as pd
 from io import BytesIO
+import fitz  # pymupdf
+
+def cargar_imagenes(archivo):
+    """Devuelve lista de (nombre, imagen). Un PDF genera una imagen por página."""
+    nombre = archivo.name
+    if nombre.lower().endswith('.pdf'):
+        doc = fitz.open(stream=archivo.getvalue(), filetype="pdf")
+        salida = []
+        for n, pagina in enumerate(doc, 1):
+            pix = pagina.get_pixmap(dpi=300)
+            img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+            salida.append((f"{nombre} (pág {n})", img))
+        return salida
+    return [(nombre, Image.open(archivo))]
 
 if os.name == 'nt':
     pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
@@ -221,8 +235,9 @@ def main():
     agente_auditor = AgenteAuditorMatematico()
     agente_cumplimiento = AgenteAnalistaCumplimiento()
 
-    archivos = st.file_uploader("Sube tus facturas (JPG, JPEG, PNG)",
-                                type=['jpg', 'jpeg', 'png'], accept_multiple_files=True)
+    archivos = st.file_uploader("Sube tus facturas (PDF, JPG, JPEG, PNG, WEBP)",
+                                type=['pdf', 'jpg', 'jpeg', 'png', 'webp'],
+                                accept_multiple_files=True)
 
     if archivos:
         st.info(f"Se han cargado {len(archivos)} documento(s).")
@@ -230,14 +245,18 @@ def main():
         if st.button("▶️ Ejecutar Procesamiento por Lotes", type="primary"):
             resultados, barra = [], st.progress(0)
 
+            resultados, imagenes_proc = [], []
+            barra = st.progress(0)
+
             for i, archivo in enumerate(archivos):
                 with st.spinner(f"Procesando {archivo.name}..."):
-                    imagen = Image.open(archivo)
-                    textos = agente_vision.extraer_textos(imagen)
-                    datos = agente_auditor.procesar_datos(textos)
-                    datos = agente_cumplimiento.evaluar_riesgo(datos)
-                    datos["Archivo Origen"] = archivo.name
-                    resultados.append(datos)
+                    for nombre, imagen in cargar_imagenes(archivo):
+                        textos = agente_vision.extraer_textos(imagen)
+                        datos = agente_auditor.procesar_datos(textos)
+                        datos = agente_cumplimiento.evaluar_riesgo(datos)
+                        datos["Archivo Origen"] = nombre
+                        resultados.append(datos)
+                        imagenes_proc.append((nombre, imagen))
                 barra.progress((i + 1) / len(archivos))
 
             st.success("✅ Flujo Multiagente por lotes completado.")
@@ -266,9 +285,9 @@ def main():
 
             with st.expander("🔍 Ver Documentos Originales Procesados"):
                 cols = st.columns(3)
-                for i, archivo in enumerate(archivos):
+                for i, (nombre, img) in enumerate(imagenes_proc):
                     with cols[i % 3]:
-                        st.image(Image.open(archivo), caption=archivo.name, use_container_width=True)
+                        st.image(img, caption=nombre, use_container_width=True)
 
 
 if __name__ == "__main__":
